@@ -20,10 +20,6 @@ public class BrainComponentEditor : Editor
     {
         brainComponent = target as BrainComponent;
 
-        EditorUtility.SetDirty(brainComponent);
-
-        brainComponent.InitBrain();
-
         InitSerialProps();
     }
 
@@ -40,8 +36,6 @@ public class BrainComponentEditor : Editor
     override public void OnInspectorGUI()
     {
         serializedObject.Update();
-
-        EditorGUI.BeginChangeCheck();
 
         EditorGUILayout.PropertyField(brainName);
 
@@ -65,11 +59,6 @@ public class BrainComponentEditor : Editor
         }
 
         serializedObject.ApplyModifiedProperties();
-
-        if (EditorGUI.EndChangeCheck())
-        {
-            brainComponent.InitBrain();
-        }
     }
 
     private int RadioGroup(int selectedIndex, string[] labels)

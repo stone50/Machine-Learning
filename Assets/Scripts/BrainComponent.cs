@@ -1,16 +1,28 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class BrainComponent : MonoBehaviour
 {
     [Tooltip("Used when saving and loading from a file")]
     public string brainName = "New Brain";
+    [SerializeField]
     public Brain brain;
+
+    void OnValidate()
+    {
+        InitBrain();
+    }
 
     void Update()
     {
         if (Time.frameCount % 60 == 0)
         {
-            brain.SetInputs(new float[] { UnityEngine.Random.Range(-1f, 1f) });
+            List<float> inputs = new List<float>(brain.inputNodes.Count - 1);
+            for (int i = 0; i < inputs.Count; i++)
+            {
+                inputs[i] = UnityEngine.Random.Range(-1f, 1f);
+            }
+            brain.SetInputs(inputs);
             brain.Think();
         }
     }
@@ -42,11 +54,6 @@ public class BrainComponent : MonoBehaviour
                 brain = Brain.Load(brainName);
                 break;
         }
-    }
-
-    void Awake()
-    {
-        InitBrain();
     }
 #endif  // UNITY_EDITOR
     #endregion UNITY_EDITOR

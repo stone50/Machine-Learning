@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 
@@ -9,21 +11,131 @@ public class Brain
     public static readonly string brainsPath = Application.persistentDataPath + "/Brains";
 
     [Serializable]
-    public struct Node
+    public class Node
     {
         public float currentValue;
-        public float[] weights;
+        public List<float> weights;
 
-        public Node(float _currentValue, float[] _weights)
+        public Node(float _currentValue, List<float> _weights)
         {
             currentValue = _currentValue;
             weights = _weights;
         }
+
+        public Node(float _currentValue, int weightCount)
+        {
+            currentValue = _currentValue;
+
+            int weightLen = Mathf.Max(weightCount, 1);
+            weights = new List<float>(weightLen);
+            for (int i = 0; i < weightLen; i++)
+            {
+                weights.Add(0f);
+            }
+        }
     }
 
-    public Node[] inputNodes { get; private set; }
-    public Node[,] middleNodes;
-    public float[] outputValues { get; private set; }
+    [Serializable]
+    public class MiddleNodeMatrix : IEnumerable<MiddleNodeCol>
+    {
+        public List<MiddleNodeCol> nodeMatrix;
+
+        public int Count
+        {
+            get
+            {
+                return nodeMatrix.Count;
+            }
+        }
+
+        public MiddleNodeMatrix(int cols, int rows)
+        {
+            nodeMatrix = new List<MiddleNodeCol>(cols);
+            for (int i = 0; i < cols; i++)
+            {
+                nodeMatrix.Add(new MiddleNodeCol(rows));
+            }
+        }
+
+        public MiddleNodeMatrix(List<List<Node>> nodes)
+        {
+            nodeMatrix = new List<MiddleNodeCol>(nodes.Count);
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                nodeMatrix.Add(new MiddleNodeCol(nodes[i]));
+            }
+        }
+
+        public MiddleNodeCol this[int index]
+        {
+            get => nodeMatrix[index];
+            set => nodeMatrix[index] = value;
+        }
+
+        public IEnumerator<MiddleNodeCol> GetEnumerator()
+        {
+            return nodeMatrix.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+    }
+
+    [Serializable]
+    public class MiddleNodeCol : IEnumerable<Node>
+    {
+        public List<Node> nodeCol;
+
+        public int Count
+        {
+            get
+            {
+                return nodeCol.Count;
+            }
+        }
+
+        public MiddleNodeCol(int rows)
+        {
+            nodeCol = new List<Node>(rows);
+            for (int i = 0; i < rows; i++)
+            {
+                nodeCol.Add(null);
+            }
+        }
+
+        public MiddleNodeCol(List<Node> nodes)
+        {
+            nodeCol = new List<Node>(nodes.Count);
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                nodeCol.Add(nodes[i]);
+            }
+        }
+
+        public Node this[int index]
+        {
+            get => nodeCol[index];
+            set => nodeCol[index] = value;
+        }
+
+        public IEnumerator<Node> GetEnumerator()
+        {
+            return nodeCol.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+    }
+
+    public List<Node> inputNodes { get; private set; }
+    public MiddleNodeMatrix middleNodes { get; private set; }
+    public List<float> outputValues { get; private set; }
 
     public Brain(int inputNodeCount, int middleNodeCols, int middleNodeRows, int outputValueCount)
     {
@@ -32,29 +144,33 @@ public class Brain
         int midNodeRows = Mathf.Max(middleNodeRows, 1);
         int outValCount = Mathf.Max(outputValueCount, 1);
 
-        inputNodes = new Node[inNodeCount + 1];
+        inputNodes = new List<Node>(inNodeCount + 1);
         for (int i = 0; i < inNodeCount; i++)
         {
-            inputNodes[i] = new Node(new float(), new float[midNodeRows]);
+            inputNodes.Add(new Node(0f, midNodeRows));
         }
-        inputNodes[inNodeCount] = new Node(1f, new float[midNodeRows]);
+        inputNodes.Add(new Node(1f, midNodeRows));
 
-        middleNodes = new Node[midNodeCols, midNodeRows];
+        middleNodes = new MiddleNodeMatrix(midNodeCols, midNodeRows);
         for (int col = 0; col < midNodeCols; col++)
         {
             for (int row = 0; row < midNodeRows; row++)
             {
-                middleNodes[col, row] = new Node(new float(), new float[col == midNodeCols - 1 ? outValCount : midNodeRows]);
+                middleNodes[col][row] = new Node(0f, col == midNodeCols - 1 ? outValCount : midNodeRows);
             }
         }
 
-        outputValues = new float[outValCount];
+        outputValues = new List<float>(outValCount);
+        for (int i = 0; i < outValCount; i++)
+        {
+            outputValues.Add(0f);
+        }
     }
 
-    public Brain(Node[] _inputNodes, Node[,] _middleNodes, float[] _outputValues)
+    public Brain(List<Node> _inputNodes, List<List<Node>> _middleNodes, List<float> _outputValues)
     {
         inputNodes = _inputNodes;
-        middleNodes = _middleNodes;
+        middleNodes = new MiddleNodeMatrix(_middleNodes);
         outputValues = _outputValues;
     }
 
@@ -99,17 +215,20 @@ public class Brain
     {
         foreach (Node inputNode in inputNodes)
         {
-            for (int weightIndex = 0; weightIndex < inputNode.weights.Length; weightIndex++)
+            for (int weightIndex = 0; weightIndex < inputNode.weights.Count; weightIndex++)
             {
                 inputNode.weights[weightIndex] = UnityEngine.Random.Range(-1f, 1f);
             }
         }
 
-        foreach (Node middleNode in middleNodes)
+        foreach (MiddleNodeCol middleNodeCol in middleNodes)
         {
-            for (int weightIndex = 0; weightIndex < middleNode.weights.Length; weightIndex++)
+            foreach (Node middleNode in middleNodeCol)
             {
-                middleNode.weights[weightIndex] = UnityEngine.Random.Range(-1f, 1f);
+                for (int weightIndex = 0; weightIndex < middleNode.weights.Count; weightIndex++)
+                {
+                    middleNode.weights[weightIndex] = UnityEngine.Random.Range(-1f, 1f);
+                }
             }
         }
     }
@@ -119,14 +238,14 @@ public class Brain
         return Mathf.Atan(num);
     }
 
-    public bool SetInputs(float[] inputs)
+    public bool SetInputs(List<float> inputs)
     {
-        if (inputs.Length != inputNodes.Length - 1)
+        if (inputs.Count != inputNodes.Count - 1)
         {
             return false;
         }
 
-        for (int i = 0; i < inputs.Length; i++)
+        for (int i = 0; i < inputs.Count; i++)
         {
             inputNodes[i].currentValue = inputs[i];
         }
@@ -135,44 +254,47 @@ public class Brain
 
     public void Think()
     {
-        for (int midNodeIndex = 0; midNodeIndex < middleNodes.GetLength(1); midNodeIndex++)
+        // send inputs to the first column of the middle layer
+        for (int midNodeIndex = 0; midNodeIndex < middleNodes[0].Count; midNodeIndex++)
         {
-            middleNodes[0, midNodeIndex].currentValue = 0f;
+            middleNodes[0][midNodeIndex].currentValue = 0f;
             foreach (Node inputNode in inputNodes)
             {
-                middleNodes[0, midNodeIndex].currentValue += inputNode.currentValue * inputNode.weights[midNodeIndex];
+                middleNodes[0][midNodeIndex].currentValue += inputNode.currentValue * inputNode.weights[midNodeIndex];
             }
         }
-        for (int i = 0; i < middleNodes.GetLength(1); i++)
+        for (int i = 0; i < middleNodes[0].Count; i++)
         {
-            middleNodes[0, i].currentValue = Brain.Sigmoid(middleNodes[0, i].currentValue);
+            middleNodes[0][i].currentValue = Brain.Sigmoid(middleNodes[0][i].currentValue);
         }
 
-        for (int midNodeColIndex = 1; midNodeColIndex < middleNodes.GetLength(0); midNodeColIndex++)
+        // send middle layer columns through other middle layer columns
+        for (int midNodeColIndex = 1; midNodeColIndex < middleNodes.Count; midNodeColIndex++)
         {
-            for (int midNodeRowIndex = 0; midNodeRowIndex < middleNodes.GetLength(1); midNodeRowIndex++)
+            for (int midNodeRowIndex = 0; midNodeRowIndex < middleNodes[0].Count; midNodeRowIndex++)
             {
-                middleNodes[midNodeColIndex, midNodeRowIndex].currentValue = 0f;
-                for (int otherMidNodeRowIndex = 0; otherMidNodeRowIndex < middleNodes.GetLength(1); otherMidNodeRowIndex++)
+                middleNodes[midNodeColIndex][midNodeRowIndex].currentValue = 0f;
+                for (int otherMidNodeRowIndex = 0; otherMidNodeRowIndex < middleNodes[0].Count; otherMidNodeRowIndex++)
                 {
-                    middleNodes[midNodeColIndex, midNodeRowIndex].currentValue += middleNodes[midNodeColIndex - 1, otherMidNodeRowIndex].currentValue * middleNodes[midNodeColIndex - 1, otherMidNodeRowIndex].weights[midNodeRowIndex];
+                    middleNodes[midNodeColIndex][midNodeRowIndex].currentValue += middleNodes[midNodeColIndex - 1][otherMidNodeRowIndex].currentValue * middleNodes[midNodeColIndex - 1][otherMidNodeRowIndex].weights[midNodeRowIndex];
                 }
             }
-            for (int i = 0; i < middleNodes.GetLength(1); i++)
+            for (int i = 0; i < middleNodes[0].Count; i++)
             {
-                middleNodes[midNodeColIndex, i].currentValue = Brain.Sigmoid(middleNodes[midNodeColIndex, i].currentValue);
+                middleNodes[midNodeColIndex][i].currentValue = Brain.Sigmoid(middleNodes[midNodeColIndex][i].currentValue);
             }
         }
 
-        for (int outValIndex = 0; outValIndex < outputValues.Length; outValIndex++)
+        // send last column of middle layer to outputs
+        for (int outValIndex = 0; outValIndex < outputValues.Count; outValIndex++)
         {
             outputValues[outValIndex] = 0f;
-            for (int midNodeIndex = 0; midNodeIndex < middleNodes.GetLength(1); midNodeIndex++)
+            for (int midNodeIndex = 0; midNodeIndex < middleNodes[0].Count; midNodeIndex++)
             {
-                outputValues[outValIndex] += middleNodes[middleNodes.GetLength(0) - 1, midNodeIndex].currentValue * middleNodes[middleNodes.GetLength(0) - 1, midNodeIndex].weights[outValIndex];
+                outputValues[outValIndex] += middleNodes[middleNodes.Count - 1][midNodeIndex].currentValue * middleNodes[middleNodes.Count - 1][midNodeIndex].weights[outValIndex];
             }
         }
-        for (int i = 0; i < outputValues.Length; i++)
+        for (int i = 0; i < outputValues.Count; i++)
         {
             outputValues[i] = Brain.Sigmoid(outputValues[i]);
         }
@@ -181,19 +303,25 @@ public class Brain
     public void Mutate(float range)
     {
         float rng = Mathf.Abs(range);
+
+        // mutate inputs
         foreach (Node inputNode in inputNodes)
         {
-            for (int weightIndex = 0; weightIndex < inputNode.weights.Length; weightIndex++)
+            for (int weightIndex = 0; weightIndex < inputNode.weights.Count; weightIndex++)
             {
                 inputNode.weights[weightIndex] = Mathf.Clamp(inputNode.weights[weightIndex] + UnityEngine.Random.Range(-rng, rng), -1f, 1f);
             }
         }
 
-        foreach (Node middleNode in middleNodes)
+        // mutate middle layer
+        foreach (MiddleNodeCol middleNodeCol in middleNodes)
         {
-            for (int weightIndex = 0; weightIndex < middleNode.weights.Length; weightIndex++)
+            foreach (Node middleNode in middleNodeCol)
             {
-                middleNode.weights[weightIndex] = Mathf.Clamp(middleNode.weights[weightIndex] + UnityEngine.Random.Range(-rng, rng), -1f, 1f);
+                for (int weightIndex = 0; weightIndex < middleNode.weights.Count; weightIndex++)
+                {
+                    middleNode.weights[weightIndex] = Mathf.Clamp(middleNode.weights[weightIndex] + UnityEngine.Random.Range(-rng, rng), -1f, 1f);
+                }
             }
         }
     }
