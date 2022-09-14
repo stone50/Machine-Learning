@@ -11,6 +11,7 @@ public class BrainDisplay : MonoBehaviour
     [SerializeField]
     public BrainComponent brainComponent;
 
+    #region spacing variables
     public float inputNodeSize = 1f;
     public float inputNodeSpacing = 1.5f;
     public float inputToMiddleSpacing = 1.5f;
@@ -23,42 +24,22 @@ public class BrainDisplay : MonoBehaviour
     public float inputToMiddleConnectionWidth = 0.05f;
     public float middleToMiddleConnectionWidth = 0.05f;
     public float middleToOutputConnectionWidth = 0.05f;
+    #endregion spacing variables
 
-    [Serializable]
-    private class MiddleDisplayNodeMatrix : IEnumerable<MiddleDisplayNodeCol>
-    {
-        public List<MiddleDisplayNodeCol> nodeMatrix;
-
-        public MiddleDisplayNodeMatrix(int cols, int rows)
-        {
-            nodeMatrix = new List<MiddleDisplayNodeCol>(cols);
-            for (int i = 0; i < cols; i++)
-            {
-                nodeMatrix.Add(new MiddleDisplayNodeCol(rows));
-            }
-        }
-
-        public MiddleDisplayNodeCol this[int index]
-        {
-            get => nodeMatrix[index];
-            set => nodeMatrix[index] = value;
-        }
-
-        public IEnumerator<MiddleDisplayNodeCol> GetEnumerator()
-        {
-            return nodeMatrix.GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-    }
-
+    // a wrapper class for columns in the matrix of hidden layer nodes
+    // this allows the data to be properly serialized
     [Serializable]
     private class MiddleDisplayNodeCol : IEnumerable<BrainDisplayNode>
     {
         public List<BrainDisplayNode> nodeCol;
+
+        public int Count
+        {
+            get
+            {
+                return nodeCol.Count;
+            }
+        }
 
         public MiddleDisplayNodeCol(int rows)
         {
@@ -91,14 +72,31 @@ public class BrainDisplay : MonoBehaviour
     private List<BrainDisplayNode> inputDisplayNodes;
     [SerializeField]
     [HideInInspector]
-    private MiddleDisplayNodeMatrix middleDisplayNodes;
+    private List<MiddleDisplayNodeCol> middleDisplayNodes;
     [SerializeField]
     [HideInInspector]
     private List<BrainDisplayNode> outputDisplayNodes;
 
+    private bool ValidateData()
+    {
+        if (
+            !brainComponent ||
+            !displayNodePrefab ||
+            brainComponent.brain == null ||
+            brainComponent.brain.inputNodes == null ||
+            brainComponent.brain.middleNodes == null ||
+            brainComponent.brain.outputValues == null
+        )
+        {
+            DestroyNodes();
+            return false;
+        }
+        return true;
+    }
+
     public void InitNodes()
     {
-        if (!brainComponent || !displayNodePrefab)
+        if (!ValidateData())
         {
             return;
         }
@@ -108,21 +106,21 @@ public class BrainDisplay : MonoBehaviour
         for (int i = 0; i < brainComponent.brain.inputNodes.Count; i++)
         {
             inputDisplayNodes.Add(Instantiate(displayNodePrefab).GetComponent<BrainDisplayNode>());
-            inputDisplayNodes[i].name = "Input Node " + i;
+            inputDisplayNodes[i].name = $"Input Node {i}";
             inputDisplayNodes[i].transform.parent = transform;
             inputDisplayNodes[i].CreateLineChildren(brainComponent.brain.middleNodes[0].Count);
         }
 
         // init middle nodes
-        middleDisplayNodes = new MiddleDisplayNodeMatrix(brainComponent.brain.middleNodes.Count, brainComponent.brain.middleNodes[0].Count);
+        middleDisplayNodes = new List<MiddleDisplayNodeCol>(brainComponent.brain.middleNodes.Count);
         for (int col = 0; col < brainComponent.brain.middleNodes.Count; col++)
         {
+            middleDisplayNodes.Add(new MiddleDisplayNodeCol(brainComponent.brain.middleNodes[0].Count));
             for (int row = 0; row < brainComponent.brain.middleNodes[0].Count; row++)
             {
                 middleDisplayNodes[col][row] = Instantiate(displayNodePrefab).GetComponent<BrainDisplayNode>();
-                middleDisplayNodes[col][row].name = "Hidden Layer Node " + col + " " + row;
+                middleDisplayNodes[col][row].name = $"Hidden Layer Node {col} {row}";
                 middleDisplayNodes[col][row].transform.parent = transform;
-                middleDisplayNodes[col][row].meshRenderer.material = new Material(Shader.Find("Standard"));
                 if (col == brainComponent.brain.middleNodes.Count - 1)
                 {
                     middleDisplayNodes[col][row].CreateLineChildren(brainComponent.brain.outputValues.Count);
@@ -139,7 +137,7 @@ public class BrainDisplay : MonoBehaviour
         for (int i = 0; i < brainComponent.brain.outputValues.Count; i++)
         {
             outputDisplayNodes.Add(Instantiate(displayNodePrefab).GetComponent<BrainDisplayNode>());
-            outputDisplayNodes[i].name = "Output Node " + i;
+            outputDisplayNodes[i].name = $"Output Node {i}";
             outputDisplayNodes[i].transform.parent = transform;
         }
 
@@ -148,7 +146,7 @@ public class BrainDisplay : MonoBehaviour
 
     public void UpdateNodes()
     {
-        if (!brainComponent || !displayNodePrefab)
+        if (!ValidateData())
         {
             return;
         }
@@ -163,7 +161,8 @@ public class BrainDisplay : MonoBehaviour
             BrainDisplayNode currentNode = outputDisplayNodes[i];
             if (!currentNode)
             {
-                continue;
+                ResetNodes();
+                return;
             }
 
             // update node position
@@ -195,7 +194,8 @@ public class BrainDisplay : MonoBehaviour
                 BrainDisplayNode currentNode = middleDisplayNodes[col][row];
                 if (!currentNode)
                 {
-                    continue;
+                    ResetNodes();
+                    return;
                 }
 
                 // update node position
@@ -283,7 +283,8 @@ public class BrainDisplay : MonoBehaviour
             BrainDisplayNode currentNode = inputDisplayNodes[i];
             if (!currentNode)
             {
-                continue;
+                ResetNodes();
+                return;
             }
 
             // update node position
@@ -373,7 +374,7 @@ public class BrainDisplay : MonoBehaviour
             }
 
         }
-        middleDisplayNodes = new MiddleDisplayNodeMatrix(0, 0);
+        middleDisplayNodes = new List<MiddleDisplayNodeCol>();
 
         // destroy output display nodes
         foreach (BrainDisplayNode displayNode in outputDisplayNodes)
@@ -394,6 +395,24 @@ public class BrainDisplay : MonoBehaviour
 
     void Update()
     {
-        ResetNodes();
+        if (!ValidateData())
+        {
+            return;
+        }
+
+        // if the brain structure changes, a full reset is required
+        if (
+            inputDisplayNodes.Count != brainComponent.brain.inputNodes.Count ||
+            middleDisplayNodes.Count != brainComponent.brain.middleNodes.Count ||
+            middleDisplayNodes[0].Count != brainComponent.brain.middleNodes[0].Count ||
+            outputDisplayNodes.Count != brainComponent.brain.outputValues.Count
+            )
+        {
+            ResetNodes();
+        }
+        else
+        {
+            UpdateNodes();
+        }
     }
 }

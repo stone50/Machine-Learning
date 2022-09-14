@@ -1,4 +1,3 @@
-using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -90,14 +89,14 @@ public class BrainComponentEditor : Editor
 
     private void LoadFromFileGUI()
     {
-        string path = Brain.brainsPath + "/" + brainName.stringValue + ".brain";
-        if (!File.Exists(path))
+        if (Brain.Load(brainName.stringValue) == null)
         {
-            EditorGUILayout.HelpBox(path + " file not found. Please generate a new brain.", MessageType.Warning);
+            EditorGUILayout.HelpBox($"Failed to load {Brain.GetFilepath(brainName.stringValue)}\nPlease generate a new brain.", MessageType.Warning);
             NodeCountGUI();
             if (GUILayout.Button("Generate", GUILayout.Width(200)))
             {
-                new Brain(inputCount.intValue, middleColCount.intValue, middleRowCount.intValue, outputCount.intValue).SaveAs(brainName.stringValue);
+                brainComponent.brain = new Brain(inputCount.intValue, middleColCount.intValue, middleRowCount.intValue, outputCount.intValue);
+                brainComponent.brain.SaveAs(brainName.stringValue);
             }
         }
     }

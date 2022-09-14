@@ -18,9 +18,9 @@ public class BrainComponent : MonoBehaviour
         if (Time.frameCount % 60 == 0)
         {
             List<float> inputs = new List<float>(brain.inputNodes.Count - 1);
-            for (int i = 0; i < inputs.Count; i++)
+            for (int i = 0; i < brain.inputNodes.Count - 1; i++)
             {
-                inputs[i] = UnityEngine.Random.Range(-1f, 1f);
+                inputs.Add(UnityEngine.Random.Range(-1f, 1f));
             }
             brain.SetInputs(inputs);
             brain.Think();

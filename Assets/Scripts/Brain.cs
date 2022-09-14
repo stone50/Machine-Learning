@@ -35,55 +35,8 @@ public class Brain
         }
     }
 
-    [Serializable]
-    public class MiddleNodeMatrix : IEnumerable<MiddleNodeCol>
-    {
-        public List<MiddleNodeCol> nodeMatrix;
-
-        public int Count
-        {
-            get
-            {
-                return nodeMatrix.Count;
-            }
-        }
-
-        public MiddleNodeMatrix(int cols, int rows)
-        {
-            nodeMatrix = new List<MiddleNodeCol>(cols);
-            for (int i = 0; i < cols; i++)
-            {
-                nodeMatrix.Add(new MiddleNodeCol(rows));
-            }
-        }
-
-        public MiddleNodeMatrix(List<List<Node>> nodes)
-        {
-            nodeMatrix = new List<MiddleNodeCol>(nodes.Count);
-            for (int i = 0; i < nodes.Count; i++)
-            {
-                nodeMatrix.Add(new MiddleNodeCol(nodes[i]));
-            }
-        }
-
-        public MiddleNodeCol this[int index]
-        {
-            get => nodeMatrix[index];
-            set => nodeMatrix[index] = value;
-        }
-
-        public IEnumerator<MiddleNodeCol> GetEnumerator()
-        {
-            return nodeMatrix.GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-    }
-
+    // a wrapper class for columns in the matrix of hidden layer nodes
+    // this allows the data to be properly serialized
     [Serializable]
     public class MiddleNodeCol : IEnumerable<Node>
     {
@@ -134,7 +87,7 @@ public class Brain
     }
 
     public List<Node> inputNodes { get; private set; }
-    public MiddleNodeMatrix middleNodes { get; private set; }
+    public List<MiddleNodeCol> middleNodes { get; private set; }
     public List<float> outputValues { get; private set; }
 
     public Brain(int inputNodeCount, int middleNodeCols, int middleNodeRows, int outputValueCount)
@@ -151,9 +104,10 @@ public class Brain
         }
         inputNodes.Add(new Node(1f, midNodeRows));
 
-        middleNodes = new MiddleNodeMatrix(midNodeCols, midNodeRows);
+        middleNodes = new List<MiddleNodeCol>(midNodeCols);
         for (int col = 0; col < midNodeCols; col++)
         {
+            middleNodes.Add(new MiddleNodeCol(midNodeRows));
             for (int row = 0; row < midNodeRows; row++)
             {
                 middleNodes[col][row] = new Node(0f, col == midNodeCols - 1 ? outValCount : midNodeRows);
@@ -167,18 +121,16 @@ public class Brain
         }
     }
 
-    public Brain(List<Node> _inputNodes, List<List<Node>> _middleNodes, List<float> _outputValues)
-    {
-        inputNodes = _inputNodes;
-        middleNodes = new MiddleNodeMatrix(_middleNodes);
-        outputValues = _outputValues;
-    }
-
     public Brain(Brain other)
     {
         inputNodes = other.inputNodes;
         middleNodes = other.middleNodes;
         outputValues = other.outputValues;
+    }
+
+    public static string GetFilepath(string name)
+    {
+        return $"{brainsPath}/{name}.brain";
     }
 
     public void SaveAs(string name)
@@ -189,15 +141,15 @@ public class Brain
         }
 
         BinaryFormatter formatter = new BinaryFormatter();
-        string path = brainsPath + "/" + name + ".brain";
-        FileStream stream = new FileStream(path, FileMode.Create);
+        FileStream stream = new FileStream(GetFilepath(name), FileMode.Create);
         formatter.Serialize(stream, this);
         stream.Close();
     }
 
     public static Brain Load(string name)
     {
-        string path = brainsPath + "/" + name + ".brain";
+        string path = GetFilepath(name);
+
         if (!File.Exists(path))
         {
             return null;
@@ -205,7 +157,18 @@ public class Brain
 
         BinaryFormatter formatter = new BinaryFormatter();
         FileStream stream = new FileStream(path, FileMode.Open);
-        Brain brain = formatter.Deserialize(stream) as Brain;
+        Brain brain;
+
+        try
+        {
+            brain = formatter.Deserialize(stream) as Brain;
+        }
+        catch
+        {
+            stream.Close();
+            return null;
+        }
+
         stream.Close();
 
         return brain;
@@ -213,6 +176,7 @@ public class Brain
 
     public void Randomize()
     {
+        // randomize input node weights
         foreach (Node inputNode in inputNodes)
         {
             for (int weightIndex = 0; weightIndex < inputNode.weights.Count; weightIndex++)
@@ -221,6 +185,7 @@ public class Brain
             }
         }
 
+        // randomize middle node weights
         foreach (MiddleNodeCol middleNodeCol in middleNodes)
         {
             foreach (Node middleNode in middleNodeCol)
@@ -233,6 +198,7 @@ public class Brain
         }
     }
 
+    // a function that takes any float and returns a float between 1 and -1
     public static float Sigmoid(float num)
     {
         return Mathf.Atan(num);
@@ -240,6 +206,8 @@ public class Brain
 
     public bool SetInputs(List<float> inputs)
     {
+        // inputs.Count should always be 1 less than inputNodes.Count
+        // because there is always 1 input node whose value is a constant 1
         if (inputs.Count != inputNodes.Count - 1)
         {
             return false;
@@ -252,6 +220,8 @@ public class Brain
         return true;
     }
 
+    // runs the assigned inputs through the network
+    // and assigns outputs
     public void Think()
     {
         // send inputs to the first column of the middle layer
