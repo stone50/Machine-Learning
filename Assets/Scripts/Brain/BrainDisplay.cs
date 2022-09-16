@@ -101,7 +101,7 @@ public class BrainDisplay : MonoBehaviour
         return true;
     }
 
-    private BrainDisplayNode CreateNode(string nodeName)
+    private BrainDisplayNode CreateNode(string nodeName, Transform parent)
     {
         GameObject nodeObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
 
@@ -116,9 +116,44 @@ public class BrainDisplay : MonoBehaviour
         displayNode.meshRenderer = renderer;
 
         nodeObject.name = nodeName;
-        nodeObject.transform.parent = transform;
+        nodeObject.transform.parent = parent;
 
         return displayNode;
+    }
+
+    private void InitDisplayNodes(BrainDisplay brainDisplay)
+    {
+        // init input nodes
+        brainDisplay.inputDisplayNodes = new List<BrainDisplayNode>(brainComponent.brain.inputNodes.Count);
+        for (int i = 0; i < brainComponent.brain.inputNodes.Count; i++)
+        {
+            brainDisplay.inputDisplayNodes.Add(CreateNode($"Input Node {i}", brainDisplay.transform));
+            brainDisplay.inputDisplayNodes[i].CreateLineChildren(brainComponent.brain.middleNodes[0].Count);
+        }
+
+        // init middle nodes
+        brainDisplay.middleDisplayNodes = new List<MiddleDisplayNodeCol>(brainComponent.brain.middleNodes.Count);
+        for (int col = 0; col < brainComponent.brain.middleNodes.Count; col++)
+        {
+            brainDisplay.middleDisplayNodes.Add(new MiddleDisplayNodeCol(brainComponent.brain.middleNodes[0].Count));
+            for (int row = 0; row < brainComponent.brain.middleNodes[0].Count; row++)
+            {
+                brainDisplay.middleDisplayNodes[col][row] = CreateNode($"Hidden Layer Node {col} {row}", brainDisplay.transform);
+                brainDisplay.middleDisplayNodes[col][row].CreateLineChildren(
+                    col == brainComponent.brain.middleNodes.Count - 1 ?
+                    brainComponent.brain.outputValues.Count :
+                    brainComponent.brain.middleNodes[0].Count
+                );
+            }
+        }
+
+        // init output nodes
+        brainDisplay.outputDisplayNodes = new List<BrainDisplayNode>(brainComponent.brain.outputValues.Count);
+        for (int i = 0; i < brainComponent.brain.outputValues.Count; i++)
+        {
+            brainDisplay.outputDisplayNodes.Add(CreateNode($"Output Node {i}", brainDisplay.transform));
+        }
+
     }
 
     public void InitNodes()
@@ -128,35 +163,14 @@ public class BrainDisplay : MonoBehaviour
             return;
         }
 
-        // init input nodes
-        inputDisplayNodes = new List<BrainDisplayNode>(brainComponent.brain.inputNodes.Count);
-        for (int i = 0; i < brainComponent.brain.inputNodes.Count; i++)
+        GameObject currentPrefab = PrefabUtility.GetCorrespondingObjectFromSource(gameObject);
+        if (currentPrefab)
         {
-            inputDisplayNodes.Add(CreateNode($"Input Node {i}"));
-            inputDisplayNodes[i].CreateLineChildren(brainComponent.brain.middleNodes[0].Count);
+            InitDisplayNodes(currentPrefab.GetComponent<BrainDisplay>());
         }
-
-        // init middle nodes
-        middleDisplayNodes = new List<MiddleDisplayNodeCol>(brainComponent.brain.middleNodes.Count);
-        for (int col = 0; col < brainComponent.brain.middleNodes.Count; col++)
+        else
         {
-            middleDisplayNodes.Add(new MiddleDisplayNodeCol(brainComponent.brain.middleNodes[0].Count));
-            for (int row = 0; row < brainComponent.brain.middleNodes[0].Count; row++)
-            {
-                middleDisplayNodes[col][row] = CreateNode($"Hidden Layer Node {col} {row}");
-                middleDisplayNodes[col][row].CreateLineChildren(
-                    col == brainComponent.brain.middleNodes.Count - 1 ?
-                    brainComponent.brain.outputValues.Count :
-                    brainComponent.brain.middleNodes[0].Count
-                );
-            }
-        }
-
-        // init output nodes
-        outputDisplayNodes = new List<BrainDisplayNode>(brainComponent.brain.outputValues.Count);
-        for (int i = 0; i < brainComponent.brain.outputValues.Count; i++)
-        {
-            outputDisplayNodes.Add(CreateNode($"Output Node {i}"));
+            InitDisplayNodes(this);
         }
 
         UpdateNodes();
@@ -363,25 +377,10 @@ public class BrainDisplay : MonoBehaviour
         return path;
     }
 
-    public void DestroyNodes()
+    private void DestroyDisplayNodes(BrainDisplay brainDisplay)
     {
-        string prefabPath = null;
-        GameObject currentPrefab = PrefabUtility.GetCorrespondingObjectFromSource(gameObject);
-        GameObject parentPrefab = null;
-        bool prefabMode = currentPrefab;
-
-        if (prefabMode)
-        {
-            prefabPath = AssetDatabase.GetAssetPath(currentPrefab);
-            parentPrefab = PrefabUtility.LoadPrefabContents(prefabPath);
-            BrainDisplay prefabBrainDisplay = parentPrefab.transform.Find(string.Join("/", GetLocalPath(gameObject).Split('/').Skip(1))).GetComponent<BrainDisplay>();
-            inputDisplayNodes = prefabBrainDisplay.inputDisplayNodes;
-            middleDisplayNodes = prefabBrainDisplay.middleDisplayNodes;
-            outputDisplayNodes = prefabBrainDisplay.outputDisplayNodes;
-        }
-
-        // destroy input display nodes
-        foreach (BrainDisplayNode displayNode in inputDisplayNodes)
+        // destroy input nodes
+        foreach (BrainDisplayNode displayNode in brainDisplay.inputDisplayNodes)
         {
             if (displayNode)
             {
@@ -397,10 +396,10 @@ public class BrainDisplay : MonoBehaviour
                 DestroyImmediate(displayNode.gameObject);
             }
         }
-        inputDisplayNodes = new List<BrainDisplayNode>();
+        brainDisplay.inputDisplayNodes = new List<BrainDisplayNode>();
 
-        // destroy middle display nodes
-        foreach (MiddleDisplayNodeCol displayNodeCol in middleDisplayNodes)
+        // destroy middle nodes
+        foreach (MiddleDisplayNodeCol displayNodeCol in brainDisplay.middleDisplayNodes)
         {
             foreach (BrainDisplayNode displayNode in displayNodeCol)
             {
@@ -419,22 +418,34 @@ public class BrainDisplay : MonoBehaviour
             }
 
         }
-        middleDisplayNodes = new List<MiddleDisplayNodeCol>();
+        brainDisplay.middleDisplayNodes = new List<MiddleDisplayNodeCol>();
 
-        // destroy output display nodes
-        foreach (BrainDisplayNode displayNode in outputDisplayNodes)
+        // destroy output nodes
+        foreach (BrainDisplayNode displayNode in brainDisplay.outputDisplayNodes)
         {
             if (displayNode)
             {
                 DestroyImmediate(displayNode.gameObject);
             }
         }
-        outputDisplayNodes = new List<BrainDisplayNode>();
+        brainDisplay.outputDisplayNodes = new List<BrainDisplayNode>();
+    }
 
-        if (prefabMode)
+    public void DestroyNodes()
+    {
+        GameObject currentPrefab = PrefabUtility.GetCorrespondingObjectFromSource(gameObject);
+        if (currentPrefab)
         {
+            string prefabPath = AssetDatabase.GetAssetPath(currentPrefab);
+            GameObject parentPrefab = PrefabUtility.LoadPrefabContents(prefabPath);
+            BrainDisplay parentPrefabBrainDisplay = parentPrefab.transform.Find(string.Join("/", GetLocalPath(gameObject).Split('/').Skip(1))).GetComponent<BrainDisplay>();
+            DestroyDisplayNodes(parentPrefabBrainDisplay);
             PrefabUtility.SaveAsPrefabAsset(parentPrefab, prefabPath);
             PrefabUtility.UnloadPrefabContents(parentPrefab);
+        }
+        else
+        {
+            DestroyDisplayNodes(this);
         }
     }
 
