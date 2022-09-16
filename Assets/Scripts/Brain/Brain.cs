@@ -295,4 +295,56 @@ public class Brain
             }
         }
     }
+
+    public static Brain Mate(Brain parent1, Brain parent2, float mutateRange)
+    {
+        if (
+            parent1.inputNodes.Count != parent2.inputNodes.Count ||
+            parent1.middleNodes.Count != parent2.middleNodes.Count ||
+            parent1.middleNodes[0].Count != parent2.middleNodes[0].Count ||
+            parent1.outputValues.Count != parent2.outputValues.Count
+        )
+        {
+            return null;
+        }
+
+        Brain child = new Brain(parent1);
+
+        // average input to middle weights
+        for (int inputIndex = 0; inputIndex < child.inputNodes.Count; inputIndex++)
+        {
+            Node currentInputNode = child.inputNodes[inputIndex];
+            for (int weightIndex = 0; weightIndex < currentInputNode.weights.Count; weightIndex++)
+            {
+                currentInputNode.weights[weightIndex] = (parent1.inputNodes[inputIndex].weights[weightIndex] + parent2.inputNodes[inputIndex].weights[weightIndex]) / 2f;
+            }
+        }
+
+        // average middle to middle weights
+        for (int middleColIndex = 0; middleColIndex < child.middleNodes.Count - 1; middleColIndex++)
+        {
+            MiddleNodeCol currentMiddleCol = child.middleNodes[middleColIndex];
+            for (int middleRowIndex = 0; middleRowIndex < child.middleNodes[0].Count; middleRowIndex++)
+            {
+                Node currentMiddleNode = currentMiddleCol[middleRowIndex];
+                for (int weightIndex = 0; weightIndex < currentMiddleNode.weights.Count; weightIndex++)
+                {
+                    currentMiddleNode.weights[weightIndex] = (parent1.middleNodes[middleColIndex][middleRowIndex].weights[weightIndex] + parent2.middleNodes[middleColIndex][middleRowIndex].weights[weightIndex]) / 2f;
+                }
+            }
+        }
+
+        // average middle to output weights
+        for (int middleIndex = 0; middleIndex < child.middleNodes[0].Count; middleIndex++)
+        {
+            Node currentMiddleNode = child.middleNodes[child.middleNodes.Count - 1][middleIndex];
+            for (int weightIndex = 0; weightIndex < currentMiddleNode.weights.Count; weightIndex++)
+            {
+                currentMiddleNode.weights[weightIndex] = (parent1.middleNodes[parent1.middleNodes.Count - 1][middleIndex].weights[weightIndex] + parent2.middleNodes[parent2.middleNodes.Count - 1][middleIndex].weights[weightIndex]) / 2f;
+            }
+        }
+
+        child.Mutate(mutateRange);
+        return child;
+    }
 }

@@ -1,12 +1,13 @@
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor;
 
-[ExecuteAlways]
+[ExecuteInEditMode]
 public class BrainDisplay : MonoBehaviour
 {
-    public GameObject displayNodePrefab;
 
     [SerializeField]
     public BrainComponent brainComponent;
@@ -69,19 +70,25 @@ public class BrainDisplay : MonoBehaviour
 
     [SerializeField]
     [HideInInspector]
-    private List<BrainDisplayNode> inputDisplayNodes;
+    private List<BrainDisplayNode> inputDisplayNodes = new List<BrainDisplayNode>();
     [SerializeField]
     [HideInInspector]
-    private List<MiddleDisplayNodeCol> middleDisplayNodes;
+    private List<MiddleDisplayNodeCol> middleDisplayNodes = new List<MiddleDisplayNodeCol>();
     [SerializeField]
     [HideInInspector]
-    private List<BrainDisplayNode> outputDisplayNodes;
+    private List<BrainDisplayNode> outputDisplayNodes = new List<BrainDisplayNode>();
+
+    public static Shader nodeShader { get; private set; }
+
+    void OnEnable()
+    {
+        nodeShader = Shader.Find("Unlit/Color");
+    }
 
     private bool ValidateData()
     {
         if (
             !brainComponent ||
-            !displayNodePrefab ||
             brainComponent.brain == null ||
             brainComponent.brain.inputNodes == null ||
             brainComponent.brain.middleNodes == null ||
@@ -92,6 +99,26 @@ public class BrainDisplay : MonoBehaviour
             return false;
         }
         return true;
+    }
+
+    private BrainDisplayNode CreateNode(string nodeName)
+    {
+        GameObject nodeObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+
+        DestroyImmediate(nodeObject.GetComponent<Collider>());
+
+        MeshRenderer renderer = nodeObject.GetComponent<MeshRenderer>();
+        renderer.sharedMaterial = new Material(nodeShader);
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+
+        BrainDisplayNode displayNode = nodeObject.AddComponent<BrainDisplayNode>();
+        displayNode.meshRenderer = renderer;
+
+        nodeObject.name = nodeName;
+        nodeObject.transform.parent = transform;
+
+        return displayNode;
     }
 
     public void InitNodes()
@@ -105,9 +132,7 @@ public class BrainDisplay : MonoBehaviour
         inputDisplayNodes = new List<BrainDisplayNode>(brainComponent.brain.inputNodes.Count);
         for (int i = 0; i < brainComponent.brain.inputNodes.Count; i++)
         {
-            inputDisplayNodes.Add(Instantiate(displayNodePrefab).GetComponent<BrainDisplayNode>());
-            inputDisplayNodes[i].name = $"Input Node {i}";
-            inputDisplayNodes[i].transform.parent = transform;
+            inputDisplayNodes.Add(CreateNode($"Input Node {i}"));
             inputDisplayNodes[i].CreateLineChildren(brainComponent.brain.middleNodes[0].Count);
         }
 
@@ -118,17 +143,12 @@ public class BrainDisplay : MonoBehaviour
             middleDisplayNodes.Add(new MiddleDisplayNodeCol(brainComponent.brain.middleNodes[0].Count));
             for (int row = 0; row < brainComponent.brain.middleNodes[0].Count; row++)
             {
-                middleDisplayNodes[col][row] = Instantiate(displayNodePrefab).GetComponent<BrainDisplayNode>();
-                middleDisplayNodes[col][row].name = $"Hidden Layer Node {col} {row}";
-                middleDisplayNodes[col][row].transform.parent = transform;
-                if (col == brainComponent.brain.middleNodes.Count - 1)
-                {
-                    middleDisplayNodes[col][row].CreateLineChildren(brainComponent.brain.outputValues.Count);
-                }
-                else
-                {
-                    middleDisplayNodes[col][row].CreateLineChildren(brainComponent.brain.middleNodes[0].Count);
-                }
+                middleDisplayNodes[col][row] = CreateNode($"Hidden Layer Node {col} {row}");
+                middleDisplayNodes[col][row].CreateLineChildren(
+                    col == brainComponent.brain.middleNodes.Count - 1 ?
+                    brainComponent.brain.outputValues.Count :
+                    brainComponent.brain.middleNodes[0].Count
+                );
             }
         }
 
@@ -136,9 +156,7 @@ public class BrainDisplay : MonoBehaviour
         outputDisplayNodes = new List<BrainDisplayNode>(brainComponent.brain.outputValues.Count);
         for (int i = 0; i < brainComponent.brain.outputValues.Count; i++)
         {
-            outputDisplayNodes.Add(Instantiate(displayNodePrefab).GetComponent<BrainDisplayNode>());
-            outputDisplayNodes[i].name = $"Output Node {i}";
-            outputDisplayNodes[i].transform.parent = transform;
+            outputDisplayNodes.Add(CreateNode($"Output Node {i}"));
         }
 
         UpdateNodes();
@@ -176,7 +194,7 @@ public class BrainDisplay : MonoBehaviour
             currentNode.transform.localScale = Vector3.one * outputNodeSize;
 
             // update node color
-            Material newMaterial = new Material(currentNode.meshRenderer.sharedMaterial);
+            Material newMaterial = new Material(nodeShader);
             newMaterial.color = new Color(
                 (1f - brainComponent.brain.outputValues[i]) / 2f,
                 (brainComponent.brain.outputValues[i] + 1f) / 2f,
@@ -186,7 +204,7 @@ public class BrainDisplay : MonoBehaviour
         }
 
         // update middle nodes
-        float halfHiddenLayerHeight = middleNodeVerticalSpacing * (brainComponent.brain.middleNodes.Count - 1) / 2f;
+        float halfHiddenLayerHeight = middleNodeVerticalSpacing * (brainComponent.brain.middleNodes[0].Count - 1) / 2f;
         for (int col = brainComponent.brain.middleNodes.Count - 1; col >= 0; col--)
         {
             for (int row = 0; row < brainComponent.brain.middleNodes[0].Count; row++)
@@ -209,7 +227,7 @@ public class BrainDisplay : MonoBehaviour
                 currentNode.transform.localScale = Vector3.one * middleNodeSize;
 
                 // update node color
-                Material newMaterial = new Material(currentNode.meshRenderer.sharedMaterial);
+                Material newMaterial = new Material(nodeShader);
                 newMaterial.color = new Color(
                     (1f - brainComponent.brain.middleNodes[col][row].currentValue) / 2f,
                     (brainComponent.brain.middleNodes[col][row].currentValue + 1f) / 2f,
@@ -232,7 +250,7 @@ public class BrainDisplay : MonoBehaviour
                         });
 
                         // update connection color
-                        Material newLineMaterial = new Material(currentLineRenderer.sharedMaterial);
+                        Material newLineMaterial = new Material(nodeShader);
                         newLineMaterial.color = new Color(
                             (1f - brainComponent.brain.middleNodes[col][row].weights[weightIndex]) / 2f,
                             (brainComponent.brain.middleNodes[col][row].weights[weightIndex] + 1f) / 2f,
@@ -259,7 +277,7 @@ public class BrainDisplay : MonoBehaviour
                         });
 
                         // update connection color
-                        Material newLineMaterial = new Material(currentLineRenderer.sharedMaterial);
+                        Material newLineMaterial = new Material(nodeShader);
                         newLineMaterial.color = new Color(
                             (1f - brainComponent.brain.middleNodes[col][row].weights[weightIndex]) / 2f,
                             (brainComponent.brain.middleNodes[col][row].weights[weightIndex] + 1f) / 2f,
@@ -298,7 +316,7 @@ public class BrainDisplay : MonoBehaviour
             currentNode.transform.localScale = Vector3.one * inputNodeSize;
 
             // update node color
-            Material newMaterial = new Material(currentNode.meshRenderer.sharedMaterial);
+            Material newMaterial = new Material(nodeShader);
             newMaterial.color = new Color(
                 (1f - brainComponent.brain.inputNodes[i].currentValue) / 2f,
                 (brainComponent.brain.inputNodes[i].currentValue + 1f) / 2f,
@@ -318,7 +336,7 @@ public class BrainDisplay : MonoBehaviour
                 });
 
                 // update connection color
-                Material newLineMaterial = new Material(currentLineRenderer.sharedMaterial);
+                Material newLineMaterial = new Material(nodeShader);
                 newLineMaterial.color = new Color(
                     (1f - brainComponent.brain.inputNodes[i].weights[weightIndex]) / 2f,
                     (brainComponent.brain.inputNodes[i].weights[weightIndex] + 1f) / 2f,
@@ -333,8 +351,35 @@ public class BrainDisplay : MonoBehaviour
         }
     }
 
+    private string GetLocalPath(GameObject gameObj)
+    {
+        string path = gameObj.name;
+        Transform parent = gameObj.transform;
+        while (parent.parent)
+        {
+            parent = parent.parent;
+            path = $"{parent.name}/{path}";
+        }
+        return path;
+    }
+
     public void DestroyNodes()
     {
+        string prefabPath = null;
+        GameObject currentPrefab = PrefabUtility.GetCorrespondingObjectFromSource(gameObject);
+        GameObject parentPrefab = null;
+        bool prefabMode = currentPrefab;
+
+        if (prefabMode)
+        {
+            prefabPath = AssetDatabase.GetAssetPath(currentPrefab);
+            parentPrefab = PrefabUtility.LoadPrefabContents(prefabPath);
+            BrainDisplay prefabBrainDisplay = parentPrefab.transform.Find(string.Join("/", GetLocalPath(gameObject).Split('/').Skip(1))).GetComponent<BrainDisplay>();
+            inputDisplayNodes = prefabBrainDisplay.inputDisplayNodes;
+            middleDisplayNodes = prefabBrainDisplay.middleDisplayNodes;
+            outputDisplayNodes = prefabBrainDisplay.outputDisplayNodes;
+        }
+
         // destroy input display nodes
         foreach (BrainDisplayNode displayNode in inputDisplayNodes)
         {
@@ -385,6 +430,12 @@ public class BrainDisplay : MonoBehaviour
             }
         }
         outputDisplayNodes = new List<BrainDisplayNode>();
+
+        if (prefabMode)
+        {
+            PrefabUtility.SaveAsPrefabAsset(parentPrefab, prefabPath);
+            PrefabUtility.UnloadPrefabContents(parentPrefab);
+        }
     }
 
     public void ResetNodes()
