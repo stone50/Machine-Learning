@@ -7,12 +7,21 @@ public class PrintFPS : MonoBehaviour
     private float maxFPS = 0f;
     private float minFPS = Mathf.Infinity;
 
+    public bool averageFPS = true;
+
     void Update()
     {
         float fps = 1f / Time.deltaTime;
 
+        if (!averageFPS)
+        {
+            print($"FPS: {fps}");
+            return;
+        }
+
         recentFPSs.Enqueue(fps);
-        if (recentFPSs.Count > 300)
+
+        while (recentFPSs.Count > fps)
         {
             recentFPSs.Dequeue();
         }
