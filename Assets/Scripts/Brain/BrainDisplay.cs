@@ -27,6 +27,8 @@ public class BrainDisplay : MonoBehaviour
     public float middleToOutputConnectionWidth = 0.05f;
     #endregion spacing variables
 
+    public bool showConnections = false;
+
     // a wrapper class for columns in the matrix of hidden layer nodes
     // this allows the data to be properly serialized
     [Serializable]
@@ -257,6 +259,13 @@ public class BrainDisplay : MonoBehaviour
                     {
                         LineRenderer currentLineRenderer = currentNode.connectedLines[weightIndex];
 
+                        currentLineRenderer.enabled = showConnections;
+
+                        if (!showConnections)
+                        {
+                            continue;
+                        }
+
                         // update connection points
                         currentLineRenderer.SetPositions(new Vector3[]{
                             currentNode.transform.position,
@@ -283,6 +292,13 @@ public class BrainDisplay : MonoBehaviour
                     for (int weightIndex = 0; weightIndex < brainComponent.brain.middleNodes[0].Count; weightIndex++)
                     {
                         LineRenderer currentLineRenderer = currentNode.connectedLines[weightIndex];
+
+                        currentLineRenderer.enabled = showConnections;
+
+                        if (!showConnections)
+                        {
+                            continue;
+                        }
 
                         // update connection points
                         currentLineRenderer.SetPositions(new Vector3[]{
@@ -342,6 +358,13 @@ public class BrainDisplay : MonoBehaviour
             for (int weightIndex = 0; weightIndex < inputDisplayNodes[i].connectedLines.Count; weightIndex++)
             {
                 LineRenderer currentLineRenderer = currentNode.connectedLines[weightIndex];
+
+                currentLineRenderer.enabled = showConnections;
+
+                if (!showConnections)
+                {
+                    continue;
+                }
 
                 // update connection points
                 currentLineRenderer.SetPositions(new Vector3[]{

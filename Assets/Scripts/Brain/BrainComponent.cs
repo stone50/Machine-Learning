@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public class BrainComponent : MonoBehaviour
@@ -11,20 +10,6 @@ public class BrainComponent : MonoBehaviour
     void OnValidate()
     {
         InitBrain();
-    }
-
-    void Update()
-    {
-        if (Time.frameCount % 60 == 0)
-        {
-            List<float> inputs = new List<float>(brain.inputNodes.Count - 1);
-            for (int i = 0; i < brain.inputNodes.Count - 1; i++)
-            {
-                inputs.Add(UnityEngine.Random.Range(-1f, 1f));
-            }
-            brain.SetInputs(inputs);
-            brain.Think();
-        }
     }
 
     public void SaveBrain()
