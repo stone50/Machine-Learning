@@ -11,10 +11,6 @@ public class PillGenerator : MonoBehaviour
 
     void Start()
     {
-        if (!pillPrefab)
-        {
-            return;
-        }
         for (int i = 0; i < pillCount; i++)
         {
             GameObject pill = PrefabUtility.InstantiatePrefab(pillPrefab) as GameObject;

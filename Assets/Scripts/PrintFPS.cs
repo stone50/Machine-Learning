@@ -3,39 +3,63 @@ using UnityEngine;
 
 public class PrintFPS : MonoBehaviour
 {
-    private Queue<float> recentFPSs = new Queue<float>();
-    private float maxFPS = 0f;
-    private float minFPS = Mathf.Infinity;
+    private Queue<float> updateFPSs = new Queue<float>();
+    private Queue<float> fixedUpdateFPSs = new Queue<float>();
 
-    public bool averageFPS = true;
+    public bool updateAverageFPS = true;
+    public bool fixedUpdateAverageFPS = true;
 
     void Update()
     {
         float fps = 1f / Time.deltaTime;
 
-        if (!averageFPS)
+        if (!updateAverageFPS)
         {
-            print($"FPS: {fps}");
+            print($"Update FPS: {fps}");
             return;
         }
 
-        recentFPSs.Enqueue(fps);
+        updateFPSs.Enqueue(fps);
 
-        while (recentFPSs.Count > fps)
+        while (updateFPSs.Count > fps)
         {
-            recentFPSs.Dequeue();
+            updateFPSs.Dequeue();
         }
 
-        maxFPS = Mathf.Max(maxFPS, fps);
-        minFPS = Mathf.Min(minFPS, fps);
-
         float avgFPS = 0f;
-        foreach (float fpsInQueue in recentFPSs)
+        foreach (float fpsInQueue in updateFPSs)
         {
             avgFPS += fpsInQueue;
         }
-        avgFPS /= recentFPSs.Count;
+        avgFPS /= updateFPSs.Count;
 
-        print($"Average FPS: {avgFPS}\nFPS: {fps}\nMin FPS: {minFPS}\nMax FPS: {maxFPS}");
+        print($"Update Average FPS: {avgFPS}");
+    }
+
+    void FixedUpdate()
+    {
+        float fps = 1f / Time.deltaTime;
+
+        if (!fixedUpdateAverageFPS)
+        {
+            print($"Fixed Update FPS: {fps}");
+            return;
+        }
+
+        fixedUpdateFPSs.Enqueue(fps);
+
+        while (fixedUpdateFPSs.Count > fps)
+        {
+            fixedUpdateFPSs.Dequeue();
+        }
+
+        float avgFPS = 0f;
+        foreach (float fpsInQueue in fixedUpdateFPSs)
+        {
+            avgFPS += fpsInQueue;
+        }
+        avgFPS /= fixedUpdateFPSs.Count;
+
+        print($"Fixed Update Average FPS: {avgFPS}");
     }
 }

@@ -148,5 +148,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   brainComponent: {fileID: 7643855339929500853}
+  meshRenderer: {fileID: 952520099304417547}
   rigidbody: {fileID: 6701001335255527077}
   sights: []

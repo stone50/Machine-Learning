@@ -22,8 +22,6 @@ public class PillGeneratorEditor : Editor
 
     public void OnSceneGUI()
     {
-        Handles.Label(pillGenerator.transform.position, pillGenerator.gameObject.name);
-
         Handles.color = Color.magenta;
         Handles.DrawWireCube(bounds.boundsValue.center, bounds.boundsValue.size);
     }
