@@ -6,11 +6,18 @@ public class PrintFPS : MonoBehaviour
     private Queue<float> updateFPSs = new Queue<float>();
     private Queue<float> fixedUpdateFPSs = new Queue<float>();
 
+    public bool updateFPS = true;
     public bool updateAverageFPS = true;
+    public bool fixedUpdateFPS = true;
     public bool fixedUpdateAverageFPS = true;
 
     void Update()
     {
+        if (!updateFPS)
+        {
+            return;
+        }
+
         float fps = 1f / Time.deltaTime;
 
         if (!updateAverageFPS)
@@ -19,12 +26,12 @@ public class PrintFPS : MonoBehaviour
             return;
         }
 
-        updateFPSs.Enqueue(fps);
-
         while (updateFPSs.Count > fps)
         {
             updateFPSs.Dequeue();
         }
+
+        updateFPSs.Enqueue(fps);
 
         float avgFPS = 0f;
         foreach (float fpsInQueue in updateFPSs)
@@ -38,7 +45,12 @@ public class PrintFPS : MonoBehaviour
 
     void FixedUpdate()
     {
-        float fps = 1f / Time.deltaTime;
+        if (!fixedUpdateFPS)
+        {
+            return;
+        }
+
+        float fps = 1f / Time.fixedDeltaTime;
 
         if (!fixedUpdateAverageFPS)
         {
@@ -46,12 +58,12 @@ public class PrintFPS : MonoBehaviour
             return;
         }
 
-        fixedUpdateFPSs.Enqueue(fps);
-
         while (fixedUpdateFPSs.Count > fps)
         {
             fixedUpdateFPSs.Dequeue();
         }
+
+        fixedUpdateFPSs.Enqueue(fps);
 
         float avgFPS = 0f;
         foreach (float fpsInQueue in fixedUpdateFPSs)

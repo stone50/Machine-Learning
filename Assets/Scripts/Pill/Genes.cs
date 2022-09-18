@@ -15,8 +15,8 @@ public class Genes
     public static readonly float damageResistMax = 5f;
     public static readonly float maxEnergyMin = 0f;
     public static readonly float maxEnergyMax = 100f;
-    public static readonly float energyDrainMin = 0.1f;
-    public static readonly float energyDrainMax = 5f;
+    public static readonly float energyDrainMin = 0.01f;
+    public static readonly float energyDrainMax = 0.1f;
     #endregion mins and maxs
 
     #region stats
