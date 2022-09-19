@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor;
 
 public class Pill : MonoBehaviour
 {
     public BrainComponent brainComponent;
+    public GameObject foodPrefab;
     public MeshRenderer meshRenderer;
     new public Rigidbody rigidbody;
 
@@ -12,6 +14,8 @@ public class Pill : MonoBehaviour
 
     public float health { get; private set; }
     public float energy { get; private set; }
+
+    private bool isDead = false;
 
     void Start()
     {
@@ -29,6 +33,21 @@ public class Pill : MonoBehaviour
     private static readonly Vector3 angle4 = new Vector3(0f, 36f, 0f);
     private static readonly Vector3 angle5 = new Vector3(0f, 72f, 0f);
     #endregion angles
+
+    private void OnDeath()
+    {
+        isDead = true;
+
+        for (int i = 0; i < 5; i++)
+        {
+            GameObject food = PrefabUtility.InstantiatePrefab(foodPrefab) as GameObject;
+            food.name = $"{gameObject.name} Food {i + 1}";
+            food.transform.parent = FoodContainer.instance.transform;
+            food.transform.position = transform.position + new Vector3(Utils.RandomRange(-0.01f, 0.01f), 0f, Utils.RandomRange(-0.01f, 0.01f));
+        }
+
+        Destroy(gameObject);
+    }
 
     private RaycastHit[] CastSights()
     {
@@ -83,12 +102,16 @@ public class Pill : MonoBehaviour
         {
             health -= genes.energyDrain;
         }
+        else if (energy > genes.maxEnergy / 2f)
+        {
+            health = Mathf.Min(health + 0.1f, genes.maxHealth);
+        }
         energy = Mathf.Max(energy - (rigidbody.velocity.magnitude * genes.energyDrain / genes.speed), 0f);
 
         // check for death
         if (health < 0f)
         {
-            Destroy(gameObject);
+            OnDeath();
         }
 
         // brain think
@@ -113,5 +136,28 @@ public class Pill : MonoBehaviour
         rigidbody.velocity = transform.rotation * Vector3.forward * genes.speed * brainComponent.brain.outputValues[0];
         rigidbody.velocity += transform.rotation * Vector3.right * genes.speed * brainComponent.brain.outputValues[1];
         rigidbody.angularVelocity = new Vector3(0f, brainComponent.brain.outputValues[2], 0f);
+    }
+
+    private void OnFoodCollision(PillFood food)
+    {
+        if (energy + food.energy < genes.maxEnergy)
+        {
+            energy += food.energy;
+            Destroy(food.gameObject);
+            food.isDead = true;
+        }
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        if (isDead)
+        {
+            return;
+        }
+
+        if (collision.gameObject.TryGetComponent<PillFood>(out PillFood food))
+        {
+            OnFoodCollision(food);
+        }
     }
 }

@@ -181,7 +181,7 @@ public class Brain
         {
             for (int weightIndex = 0; weightIndex < inputNode.weights.Count; weightIndex++)
             {
-                inputNode.weights[weightIndex] = UnityEngine.Random.Range(-1f, 1f);
+                inputNode.weights[weightIndex] = Utils.RandomRange(-1f, 1f);
             }
         }
 
@@ -192,7 +192,7 @@ public class Brain
             {
                 for (int weightIndex = 0; weightIndex < middleNode.weights.Count; weightIndex++)
                 {
-                    middleNode.weights[weightIndex] = UnityEngine.Random.Range(-1f, 1f);
+                    middleNode.weights[weightIndex] = Utils.RandomRange(-1f, 1f);
                 }
             }
         }
@@ -279,7 +279,7 @@ public class Brain
         {
             for (int weightIndex = 0; weightIndex < inputNode.weights.Count; weightIndex++)
             {
-                inputNode.weights[weightIndex] = Mathf.Clamp(inputNode.weights[weightIndex] + UnityEngine.Random.Range(-rng, rng), -1f, 1f);
+                inputNode.weights[weightIndex] = Mathf.Clamp(inputNode.weights[weightIndex] + Utils.RandomRange(-rng, rng), -1f, 1f);
             }
         }
 
@@ -290,7 +290,7 @@ public class Brain
             {
                 for (int weightIndex = 0; weightIndex < middleNode.weights.Count; weightIndex++)
                 {
-                    middleNode.weights[weightIndex] = Mathf.Clamp(middleNode.weights[weightIndex] + UnityEngine.Random.Range(-rng, rng), -1f, 1f);
+                    middleNode.weights[weightIndex] = Mathf.Clamp(middleNode.weights[weightIndex] + Utils.RandomRange(-rng, rng), -1f, 1f);
                 }
             }
         }

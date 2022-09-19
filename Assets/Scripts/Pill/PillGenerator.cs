@@ -16,9 +16,9 @@ public class PillGenerator : MonoBehaviour
             GameObject pill = PrefabUtility.InstantiatePrefab(pillPrefab) as GameObject;
             pill.transform.parent = transform;
             pill.transform.position = new Vector3(
-                bounds.center.x + UnityEngine.Random.Range(-bounds.extents.x, bounds.extents.x),
+                bounds.center.x + Utils.RandomRange(-bounds.extents.x, bounds.extents.x),
                 bounds.center.y,
-                bounds.center.z + UnityEngine.Random.Range(-bounds.extents.z, bounds.extents.z)
+                bounds.center.z + Utils.RandomRange(-bounds.extents.z, bounds.extents.z)
             );
             pill.name = $"Pill {i + 1}";
         }

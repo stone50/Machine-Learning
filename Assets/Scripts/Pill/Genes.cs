@@ -1,9 +1,11 @@
+using System;
 using UnityEngine;
 
+[Serializable]
 public class Genes
 {
     #region mins and maxs
-    public static readonly float eyeSightMin = 0f;
+    public static readonly float eyeSightMin = 0.5f;
     public static readonly float eyeSightMax = 5f;
     public static readonly float speedMin = 0f;
     public static readonly float speedMax = 5f;
@@ -33,17 +35,17 @@ public class Genes
     public void Randomize()
     {
         color = new Color(
-            UnityEngine.Random.Range(0f, 1f),
-            UnityEngine.Random.Range(0f, 1f),
-            UnityEngine.Random.Range(0f, 1f)
+            Utils.RandomRange(0f, 1f),
+            Utils.RandomRange(0f, 1f),
+            Utils.RandomRange(0f, 1f)
         );
 
-        eyeSight = UnityEngine.Random.Range(eyeSightMin, eyeSightMax);
-        speed = UnityEngine.Random.Range(speedMin, speedMax);
-        maxHealth = UnityEngine.Random.Range(maxHealthMin, maxHealthMax);
-        damage = UnityEngine.Random.Range(damageMin, damageMax);
-        damageResist = UnityEngine.Random.Range(damageResistMin, damageResistMax);
-        maxEnergy = UnityEngine.Random.Range(maxEnergyMin, maxEnergyMax);
-        energyDrain = UnityEngine.Random.Range(energyDrainMin, energyDrainMax);
+        eyeSight = Utils.RandomRange(eyeSightMin, eyeSightMax);
+        speed = Utils.RandomRange(speedMin, speedMax);
+        maxHealth = Utils.RandomRange(maxHealthMin, maxHealthMax);
+        damage = Utils.RandomRange(damageMin, damageMax);
+        damageResist = Utils.RandomRange(damageResistMin, damageResistMax);
+        maxEnergy = Utils.RandomRange(maxEnergyMin, maxEnergyMax);
+        energyDrain = Utils.RandomRange(energyDrainMin, energyDrainMax);
     }
 }
